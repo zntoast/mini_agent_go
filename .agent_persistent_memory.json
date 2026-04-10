@@ -1,0 +1,12 @@
+{
+  "sessions": [],
+  "user_profile": {
+    "name": "",
+    "preferences": {
+      "mini_agent_project": "The mini_agent project is a Go-based AI Agent framework located at D:\\workspacke\\agent\\mini_agent. It's configured to use MiniMax-M2.5 model with Anthropic API. The project has tools for bash execution, file read/write/edit, and note-taking. The config file is at mini_agent/config/config.yaml. The main executable is mini-agent.exe."
+    },
+    "last_session": "",
+    "total_sessions": 0
+  },
+  "last_update": "2026-04-10T15:38:05+08:00"
+}

@@ -36,14 +36,15 @@ type MCPConfig struct {
 }
 
 type ToolsConfig struct {
-	EnableFileTools bool      `yaml:"enable_file_tools"`
-	EnableBash      bool      `yaml:"enable_bash"`
-	EnableNote      bool      `yaml:"enable_note"`
-	EnableSkills    bool      `yaml:"enable_skills"`
-	SkillsDir       string    `yaml:"skills_dir"`
-	EnableMCP       bool      `yaml:"enable_mcp"`
-	MCPConfigPath   string    `yaml:"mcp_config_path"`
-	MCP             MCPConfig `yaml:"mcp"`
+	EnableFileTools        bool      `yaml:"enable_file_tools"`
+	EnableBash             bool      `yaml:"enable_bash"`
+	EnableNote             bool      `yaml:"enable_note"`
+	EnablePersistentMemory bool      `yaml:"enable_persistent_memory"`
+	EnableSkills           bool      `yaml:"enable_skills"`
+	SkillsDir              string    `yaml:"skills_dir"`
+	EnableMCP              bool      `yaml:"enable_mcp"`
+	MCPConfigPath          string    `yaml:"mcp_config_path"`
+	MCP                    MCPConfig `yaml:"mcp"`
 }
 
 type Config struct {
@@ -88,6 +89,10 @@ func Load(configPath string) (*Config, error) {
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, err
+	}
+
+	if envKey := os.Getenv("MINIMAX_API_KEY"); envKey != "" {
+		config.LLM.APIKey = envKey
 	}
 
 	if err := config.Validate(); err != nil {

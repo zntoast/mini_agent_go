@@ -1,5 +1,5 @@
 llm:
-  api_key: ""
+  api_key: "" # Use MINIMAX_API_KEY env var
   api_base: "https://api.minimaxi.com"
   model: "MiniMax-M2.5"
   provider: "anthropic"
@@ -19,6 +19,7 @@ tools:
   enable_file_tools: true
   enable_bash: true
   enable_note: true
+  enable_persistent_memory: true
   enable_skills: false
   skills_dir: "./skills"
   enable_mcp: false
