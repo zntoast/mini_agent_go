@@ -175,7 +175,10 @@ func initializeTools(cfg *config.Config, workspaceDir string) ([]tools.Tool, err
 	}
 
 	if cfg.Tools.EnablePersistentMemory {
-		persistentMemoryFile := filepath.Join(workspaceDir, ".agent_persistent_memory.json")
+		homeDir, _ := os.UserHomeDir()
+		memoryDir := filepath.Join(homeDir, ".mini-agent", "memory")
+		os.MkdirAll(memoryDir, 0755)
+		persistentMemoryFile := filepath.Join(memoryDir, "memory.json")
 		toolList = append(toolList, tools.NewSessionMemoryTool(persistentMemoryFile))
 		toolList = append(toolList, tools.NewRecallMemoryTool(persistentMemoryFile))
 		toolList = append(toolList, tools.NewSessionSummaryTool(persistentMemoryFile))
