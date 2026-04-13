@@ -14,6 +14,10 @@
 - **MCP 支持** - 连接 Model Context Protocol 服务器扩展工具
 - **持久化记忆** - 跨会话记忆用户偏好和重要信息
 
+## 运行截图
+
+![Mini-Agent 运行截图](./static/image.png)
+
 ## 项目结构
 
 ```

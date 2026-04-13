@@ -14,6 +14,10 @@ An interactive AI agent framework written in Go that uses Large Language Models 
 - **MCP Support** - Connect to Model Context Protocol servers for extended tools
 - **Persistent Memory** - Cross-session memory for user preferences and important information
 
+## Screenshot
+
+![Mini-Agent Screenshot](./static/image.png)
+
 ## Project Structure
 
 ```
