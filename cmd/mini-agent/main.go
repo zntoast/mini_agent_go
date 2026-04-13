@@ -15,6 +15,7 @@ import (
 	"github.com/zntoast/mini_agent/pkg/agent"
 	"github.com/zntoast/mini_agent/pkg/config"
 	"github.com/zntoast/mini_agent/pkg/llm"
+	"github.com/zntoast/mini_agent/pkg/mcp"
 	"github.com/zntoast/mini_agent/pkg/schema"
 	"github.com/zntoast/mini_agent/pkg/tools"
 )
@@ -153,6 +154,7 @@ func printStats(agentInstance *agent.Agent, sessionStart time.Time) {
 
 func initializeTools(cfg *config.Config, workspaceDir string) ([]tools.Tool, error) {
 	var toolList []tools.Tool
+	colors := NewColors()
 
 	if cfg.Tools.EnableBash {
 		toolList = append(toolList, tools.NewBashTool(workspaceDir))
@@ -177,6 +179,23 @@ func initializeTools(cfg *config.Config, workspaceDir string) ([]tools.Tool, err
 		toolList = append(toolList, tools.NewSessionMemoryTool(persistentMemoryFile))
 		toolList = append(toolList, tools.NewRecallMemoryTool(persistentMemoryFile))
 		toolList = append(toolList, tools.NewSessionSummaryTool(persistentMemoryFile))
+	}
+
+	if cfg.Tools.EnableMCP {
+		mcpClient, err := mcp.NewClient(cfg)
+		if err != nil {
+			fmt.Printf("%s⚠️ Failed to create MCP client: %v%s\n", colors.Yellow, err, colors.Reset)
+		} else if err := mcpClient.Connect(); err != nil {
+			fmt.Printf("%s⚠️ Failed to connect to MCP server: %v%s\n", colors.Yellow, err, colors.Reset)
+		} else {
+			mcpTools := mcpClient.GetTools()
+			toolList = append(toolList, mcpTools...)
+			fmt.Printf("%s✅ Loaded %d MCP tools:%s\n", colors.BrightGreen, len(mcpTools), colors.Reset)
+			for _, t := range mcpTools {
+				fmt.Printf("%s   - %s%s: %s%s\n", colors.Dim, colors.Cyan, t.GetName(), colors.Dim, t.GetDescription())
+			}
+			fmt.Println()
+		}
 	}
 
 	return toolList, nil

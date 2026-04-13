@@ -22,8 +22,8 @@ tools:
   enable_persistent_memory: true
   enable_skills: false
   skills_dir: "./skills"
-  enable_mcp: false
-  mcp_config_path: "mcp.json"
+  enable_mcp: true
+  mcp_config_path: "mini_agent/mcp"
   mcp:
     connect_timeout: 10.0
     execute_timeout: 60.0

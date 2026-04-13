@@ -11,7 +11,8 @@ An interactive AI agent framework written in Go that uses Large Language Models 
 - **Multiple LLM Providers** - Support for OpenAI and Anthropic-compatible APIs
 - **Token Management** - Automatic message summarization when context exceeds limits
 - **Retry Mechanism** - Exponential backoff retry on API failures
-- **ACP Protocol** - Model Context Protocol server for external integrations
+- **MCP Support** - Connect to Model Context Protocol servers for extended tools
+- **Persistent Memory** - Cross-session memory for user preferences and important information
 
 ## Project Structure
 
@@ -28,23 +29,29 @@ mini_agent/
 │   ├── schema/
 │   │   └── schema.go            # Message, ToolCall, LLMResponse types
 │   ├── llm/
-│   │   ├── base.go              # LLMClientBase interface
-│   │   ├── llm_wrapper.go       # Provider router (Anthropic/OpenAI)
-│   │   ├── openai_client.go     # OpenAI-compatible API client
-│   │   ├── anthropic_client.go  # Anthropic API client
+│   │   ├── base.go               # LLMClientBase interface
+│   │   ├── llm_wrapper.go        # Provider router (Anthropic/OpenAI)
+│   │   ├── openai_client.go      # OpenAI-compatible API client
+│   │   ├── anthropic_client.go   # Anthropic API client
 │   │   └── retry.go             # Exponential backoff retry logic
 │   ├── tools/
-│   │   ├── base.go              # Tool interface definition
+│   │   ├── base.go               # Tool interface definition
 │   │   ├── bash_tool.go         # Bash/PowerShell execution
 │   │   ├── file_tools.go        # File read/write/edit operations
-│   │   └── note_tool.go         # Session notes recording
+│   │   ├── note_tool.go         # Session notes recording
+│   │   └── memory_tool.go       # Persistent memory tools
+│   ├── mcp/
+│   │   └── client.go            # MCP Client implementation
 │   ├── logger/
 │   │   └── logger.go            # Request/response logging
 │   ├── utils/
 │   │   └── terminal.go          # Display width calculation
 │   └── acp/
 │       └── server.go            # Model Context Protocol server
-├── config.yaml                  # Configuration file
+├── config/
+│   └── config.yaml              # Configuration file
+├── mcp/
+│   └── mcp.json                 # MCP servers configuration
 ├── go.mod                       # Go module definition
 └── go.sum                       # Dependencies checksums
 ```
@@ -55,6 +62,7 @@ mini_agent/
 
 - Go 1.21+
 - Access to OpenAI or Anthropic API (or compatible service like MiniMax)
+- `uvx` (for MCP servers, if using MCP functionality)
 
 ### Build
 
@@ -65,6 +73,18 @@ go build -o mini-agent ./cmd/mini-agent
 ```
 
 ## Configuration
+
+### Environment Variables
+
+```bash
+# MiniMax API Key (required)
+export MINIMAX_API_KEY="your-api-key"
+
+# Or Windows PowerShell
+$env:MINIMAX_API_KEY = "your-api-key"
+```
+
+### Configuration File
 
 Create `config.yaml` in one of these locations (searched in order):
 
@@ -77,10 +97,10 @@ Create `config.yaml` in one of these locations (searched in order):
 ```yaml
 # LLM Configuration
 llm:
-  api_key: "YOUR_API_KEY" # Required: API authentication
-  api_base: "https://api.minimaxi.com" # API endpoint
-  model: "MiniMax-Text-01" # Model name
-  provider: "anthropic" # "anthropic" or "openai"
+  api_key: ""                               # Use MINIMAX_API_KEY env var
+  api_base: "https://api.minimaxi.com"     # API endpoint
+  model: "MiniMax-M2.5"                    # Model name
+  provider: "anthropic"                    # "anthropic" or "openai"
 
   retry:
     enabled: true
@@ -91,16 +111,46 @@ llm:
 
 # Agent Configuration
 agent:
-  max_steps: 100 # Max tool-use iterations
-  workspace_dir: "./workspace" # Working directory
+  max_steps: 100                            # Max tool-use iterations
+  workspace_dir: "./workspace"              # Working directory
   system_prompt_path: "system_prompt.md"
 
 # Tools Configuration
 tools:
-  enable_file_tools: true # File read/write/edit
-  enable_bash: true # Execute commands
-  enable_note: true # Session notes
-  enable_mcp: false # Model Context Protocol
+  enable_file_tools: true                  # File read/write/edit
+  enable_bash: true                         # Execute commands
+  enable_note: true                         # Session notes
+  enable_persistent_memory: true           # Persistent memory
+  enable_mcp: true                          # MCP support
+  mcp_config_path: "mini_agent/mcp"
+  mcp:
+    connect_timeout: 10.0
+    execute_timeout: 60.0
+    sse_read_timeout: 120.0
+```
+
+### MCP Configuration (mcp.json)
+
+```json
+{
+  "servers": [
+    {
+      "name": "MiniMax",
+      "command": "uvx",
+      "args": ["minimax-coding-plan-mcp", "-y"],
+      "env": [
+        "MINIMAX_API_KEY=your-api-key",
+        "MINIMAX_API_HOST=https://api.minimaxi.com"
+      ]
+    }
+  ]
+}
+```
+
+**Note**: Windows users need to install `uv` first:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ## Usage
@@ -195,7 +245,7 @@ Commands:
 │         │                                                       │
 │         v                                                       │
 │  ┌─────────────┐                                                │
-│  │ 4. LLM      │  Send messages + tools to LLM                  │
+│  │ 4. LLM      │  Send messages + tools to LLM                │
 │  │    Generate │                                                │
 │  └──────┬──────┘                                                │
 │         │                                                       │
@@ -214,24 +264,43 @@ Commands:
 │         │                   │                                   │
 │         v                   v                                   │
 │  ┌─────────────┐     ┌─────────────┐                            │
-│  │ 7. Return   │<────│ 8. Loop    │                            │
-│  │    Result   │     │    Back    │                            │
+│  │ 7. Return   │<────│ 8. Loop     │                            │
+│  │    Result   │     │    Back     │                            │
 │  └─────────────┘     └─────────────┘                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Available Tools
 
+### Built-in Tools
+
 | Tool           | Description                    | Parameters                                |
 | -------------- | ------------------------------ | ----------------------------------------- |
 | `bash`         | Execute shell commands         | `command`, `timeout`, `run_in_background` |
-| `bash_output`  | Get background command output  | `id`, `filter_str`                        |
+| `bash_output`  | Get background command output   | `id`, `filter_str`                        |
 | `bash_kill`    | Terminate background command   | `id`                                      |
 | `read_file`    | Read file contents             | `path`, `offset`, `limit`                 |
 | `write_file`   | Write content to file          | `path`, `content`                         |
-| `edit_file`    | Edit file (single replacement) | `path`, `old_str`, `new_str`              |
+| `edit_file`    | Edit file (single replacement)  | `path`, `old_str`, `new_str`             |
 | `record_note`  | Record a session note          | `content`, `category`                     |
 | `recall_notes` | Retrieve session notes         | `category`                                |
+
+### Persistent Memory Tools
+
+| Tool               | Description                          | Parameters                    |
+| ------------------ | ------------------------------------ | ----------------------------- |
+| `save_memory`      | Save info to persistent memory       | `content`, `category`, `key` |
+| `recall_memory`    | Retrieve from persistent memory       | `query`, `category`           |
+| `summarize_session`| Save session summary                 | `summary`                     |
+
+### MCP Tools
+
+MCP tools depend on configured MCP servers. For example, MiniMax MCP provides:
+
+| Tool              | Description        |
+| ----------------- | ------------------ |
+| `web_search`      | Web search         |
+| `understand_image`| Image understanding|
 
 ## Token Management
 

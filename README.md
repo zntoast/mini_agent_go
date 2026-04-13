@@ -1,6 +1,6 @@
 # Mini-Agent
 
-[English](./README_EN.md) | **中文**
+**中文** | [English](./README_EN.md)
 
 一个使用 Go 语言编写的交互式 AI Agent 框架，通过结合文本生成和工具执行来完成复杂任务。
 
@@ -11,7 +11,8 @@
 - **多 LLM 提供商** - 支持 OpenAI 和 Anthropic 兼容 API
 - **Token 管理** - 当上下文超出限制时自动摘要
 - **重试机制** - API 失败时指数退避重试
-- **ACP 协议** - Model Context Protocol 服务端
+- **MCP 支持** - 连接 Model Context Protocol 服务器扩展工具
+- **持久化记忆** - 跨会话记忆用户偏好和重要信息
 
 ## 项目结构
 
@@ -28,25 +29,31 @@ mini_agent/
 │   ├── schema/
 │   │   └── schema.go            # Message, ToolCall, LLMResponse 类型
 │   ├── llm/
-│   │   ├── base.go              # LLMClientBase 接口
-│   │   ├── llm_wrapper.go      # 提供商路由 (Anthropic/OpenAI)
-│   │   ├── openai_client.go    # OpenAI 兼容 API 客户端
-│   │   ├── anthropic_client.go # Anthropic API 客户端
-│   │   └── retry.go             # 指数退避重试逻辑
+│   │   ├── base.go               # LLMClientBase 接口
+│   │   ├── llm_wrapper.go        # 提供商路由 (Anthropic/OpenAI)
+│   │   ├── openai_client.go      # OpenAI 兼容 API 客户端
+│   │   ├── anthropic_client.go    # Anthropic API 客户端
+│   │   └── retry.go              # 指数退避重试逻辑
 │   ├── tools/
-│   │   ├── base.go              # 工具接口定义
-│   │   ├── bash_tool.go        # Bash/PowerShell 执行
-│   │   ├── file_tools.go       # 文件读写编辑操作
-│   │   └── note_tool.go        # 会话笔记记录
+│   │   ├── base.go               # 工具接口定义
+│   │   ├── bash_tool.go          # Bash/PowerShell 执行
+│   │   ├── file_tools.go         # 文件读写编辑操作
+│   │   ├── note_tool.go          # 会话笔记记录
+│   │   └── memory_tool.go        # 持久化记忆工具
+│   ├── mcp/
+│   │   └── client.go             # MCP Client 实现
 │   ├── logger/
-│   │   └── logger.go            # 请求/响应日志
+│   │   └── logger.go             # 请求/响应日志
 │   ├── utils/
-│   │   └── terminal.go         # 显示宽度计算
+│   │   └── terminal.go           # 显示宽度计算
 │   └── acp/
-│       └── server.go           # Model Context Protocol 服务端
-├── config.yaml                  # 配置文件
-├── go.mod                       # Go 模块定义
-└── go.sum                      # 依赖校验和
+│       └── server.go             # Model Context Protocol 服务端
+├── config/
+│   └── config.yaml               # 配置文件
+├── mcp/
+│   └── mcp.json                  # MCP 服务器配置
+├── go.mod                        # Go 模块定义
+└── go.sum                        # 依赖校验和
 ```
 
 ## 安装
@@ -55,6 +62,7 @@ mini_agent/
 
 - Go 1.21+
 - OpenAI 或 Anthropic API 访问权限（或兼容服务如 MiniMax）
+- `uvx`（用于 MCP 服务器，如需使用 MCP 功能）
 
 ### 构建
 
@@ -65,6 +73,18 @@ go build -o mini-agent ./cmd/mini-agent
 ```
 
 ## 配置
+
+### 环境变量
+
+```bash
+# MiniMax API Key（必需）
+export MINIMAX_API_KEY="your-api-key"
+
+# 或 Windows PowerShell
+$env:MINIMAX_API_KEY = "your-api-key"
+```
+
+### 配置文件
 
 在以下位置之一创建 `config.yaml`（按顺序搜索）：
 
@@ -77,10 +97,10 @@ go build -o mini-agent ./cmd/mini-agent
 ```yaml
 # LLM 配置
 llm:
-  api_key: "YOUR_API_KEY"              # 必填：API 认证
-  api_base: "https://api.minimaxi.com" # API 端点
-  model: "MiniMax-Text-01"             # 模型名称
-  provider: "anthropic"                # "anthropic" 或 "openai"
+  api_key: ""                              # 使用 MINIMAX_API_KEY 环境变量
+  api_base: "https://api.minimaxi.com"    # API 端点
+  model: "MiniMax-M2.5"                   # 模型名称
+  provider: "anthropic"                   # "anthropic" 或 "openai"
 
   retry:
     enabled: true
@@ -91,16 +111,46 @@ llm:
 
 # Agent 配置
 agent:
-  max_steps: 100                        # 最大工具调用迭代次数
-  workspace_dir: "./workspace"          # 工作目录
+  max_steps: 100                           # 最大工具调用迭代次数
+  workspace_dir: "./workspace"             # 工作目录
   system_prompt_path: "system_prompt.md"
 
 # 工具配置
 tools:
-  enable_file_tools: true              # 文件读写编辑
-  enable_bash: true                    # 执行命令
-  enable_note: true                    # 会话笔记
-  enable_mcp: false                    # Model Context Protocol
+  enable_file_tools: true                  # 文件读写编辑
+  enable_bash: true                        # 执行命令
+  enable_note: true                        # 会话笔记
+  enable_persistent_memory: true           # 持久化记忆
+  enable_mcp: true                         # MCP 支持
+  mcp_config_path: "mini_agent/mcp"
+  mcp:
+    connect_timeout: 10.0
+    execute_timeout: 60.0
+    sse_read_timeout: 120.0
+```
+
+### MCP 配置 (mcp.json)
+
+```json
+{
+  "servers": [
+    {
+      "name": "MiniMax",
+      "command": "uvx",
+      "args": ["minimax-coding-plan-mcp", "-y"],
+      "env": [
+        "MINIMAX_API_KEY=your-api-key",
+        "MINIMAX_API_HOST=https://api.minimaxi.com"
+      ]
+    }
+  ]
+}
+```
+
+**注意**：Windows 用户需先安装 `uv`：
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ## 使用
@@ -112,6 +162,7 @@ tools:
 ```
 
 命令：
+
 - `/help` - 显示帮助
 - `/clear` - 清除会话历史
 - `/history` - 显示消息数量
@@ -194,32 +245,34 @@ tools:
 │         │                                                       │
 │         v                                                       │
 │  ┌─────────────┐                                                │
-│  │ 4. LLM     │  Send messages + tools to LLM                 │
+│  │ 4. LLM      │  Send messages + tools to LLM                │
 │  │    Generate │                                                │
 │  └──────┬──────┘                                                │
 │         │                                                       │
 │         v                                                       │
 │  ┌─────────────┐                                                │
-│  │ 5. Display │  Show thinking & content                       │
-│  │    Output  │                                                │
+│  │ 5. Display  │  Show thinking & content                       │
+│  │    Output   │                                                │
 │  └──────┬──────┘                                                │
 │         │                                                       │
 │         v                                                       │
 │  ┌─────────────┐     ┌─────────────┐                            │
-│  │ 6. Tool    │────>│  Execute    │  For each tool_call:       │
-│  │    Calls?  │ Yes │  Tool       │  - Parse arguments          │
+│  │ 6. Tool     │────>│  Execute    │  For each tool_call:       │
+│  │    Calls?   │ Yes │  Tool       │  - Parse arguments          │
 │  └──────┬──────┘     │  Results    │  - Execute tool            │
 │         │ No         └──────┬──────┘  - Add to history         │
 │         │                   │                                   │
 │         v                   v                                   │
 │  ┌─────────────┐     ┌─────────────┐                            │
-│  │ 7. Return  │<────│ 8. Loop     │                            │
-│  │    Result  │     │    Back     │                            │
+│  │ 7. Return   │<────│ 8. Loop     │                            │
+│  │    Result   │     │    Back     │                            │
 │  └─────────────┘     └─────────────┘                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## 可用工具
+
+### 内置工具
 
 | 工具 | 描述 | 参数 |
 |------|------|------|
@@ -231,6 +284,23 @@ tools:
 | `edit_file` | 编辑文件（单次替换） | `path`, `old_str`, `new_str` |
 | `record_note` | 记录会话笔记 | `content`, `category` |
 | `recall_notes` | 检索会话笔记 | `category` |
+
+### 持久化记忆工具
+
+| 工具 | 描述 | 参数 |
+|------|------|------|
+| `save_memory` | 保存重要信息到持久化记忆 | `content`, `category`, `key` |
+| `recall_memory` | 检索持久化记忆 | `query`, `category` |
+| `summarize_session` | 保存会话摘要 | `summary` |
+
+### MCP 工具
+
+MCP 工具取决于配置的 MCP 服务器，例如 MiniMax MCP 提供：
+
+| 工具 | 描述 |
+|------|------|
+| `web_search` | 网络搜索 |
+| `understand_image` | 图片理解 |
 
 ## Token 管理
 
