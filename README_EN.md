@@ -272,7 +272,83 @@ Commands:
 │  │    Result   │     │    Back     │                            │
 │  └─────────────┘     └─────────────┘                            │
 └─────────────────────────────────────────────────────────────────┘
+
+## ReAct Pattern
+
+This project uses the **ReAct** (Reasoning + Acting) pattern, enabling the Agent to perform explicit reasoning and complete complex tasks through tool execution.
+
+### Core Concept
+
+ReAct was introduced by **Princeton + Google** in 2022, with the core idea being to enable LLMs to perform **explicit reasoning** during task execution, rather than directly generating tool calls.
+
+### Standard Loop
+
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                     ReAct Loop                               │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌───────────┐                                               │
+│  │  Thought  │  Reasoning: What tool is needed for this?    │
+│  └─────┬─────┘                                               │
+│        │                                                     │
+│        ▼                                                     │
+│  ┌───────────┐                                               │
+│  │   Action  │  Execute: Call tool with parameters           │
+│  └─────┬─────┘                                               │
+│        │                                                     │
+│        ▼                                                     │
+│  ┌───────────┐                                               │
+│  │  Observe  │  Observe: Get tool return result            │
+│  └─────┬─────┘                                               │
+│        │                                                     │
+│        ▼                                                     │
+│  ┌───────────┐                                               │
+│  │  Reason   │  Reason: Decide next step based on result     │
+│  └─────┬─────┘                                               │
+│        │                                                     │
+│        └──► Continue loop or finish                          │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Implementation in This Project
+
+| Stage  | Description           | Code Indicator           |
+|--------|----------------------|-------------------------|
+| Thought | LLM outputs thinking | `🧠 Thinking:` display  |
+| Action | Call tool            | `🔧 Tool Call:`         |
+| Observe | Get result          | `✓ Result:`            |
+| Reason | Decide next step     | Next LLM call           |
+
+### Difference from Standard ReAct
+
+**Standard ReAct** (single-round reasoning):
+```
+Thought: Need to read a file
+Action: read_file(path="xxx")
+Observe: File content is...
+Reason: Based on content, next step should be...
+```
+
+**This Project** (multi-round Agent Loop):
+```
+Step 1: LLM decides to call tool
+Step 2: Execute tool, return result
+Step 3: Add result to message history
+Step 4: LLM continues to decide next step
+... Loop until task is complete
+```
+
+### Related Patterns
+
+| Pattern            | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| **ReAct**         | Reasoning + Acting + Observing                   |
+| **Reflexion**     | ReAct + Self-reflection + Memory                 |
+| **CoT**           | Chain of Thought - reasoning only, no action     |
+| **ToT**           | Tree of Thought - multi-path exploration         |
+| **Plan-and-Execute** | Planning phase + Execution phase separation    |
 
 ## Available Tools
 
