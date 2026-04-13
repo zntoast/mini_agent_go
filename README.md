@@ -2,10 +2,13 @@
 
 **中文** | [English](./README_EN.md)
 
-一个使用 Go 语言编写的交互式 AI Agent 框架，通过结合文本生成和工具执行来完成复杂任务。
+一个使用 Go 语言编写的交互式 AI Agent 框架，基于 **ReAct** (Reasoning + Acting) 模式，通过结合文本生成和工具执行来完成复杂任务。
+
+Agent 会自动进行推理（Thought）→ 行动（Action）→ 观察（Observe）→ 推理（Reason）的循环，直到任务完成。
 
 ## 功能特性
 
+- **ReAct 模式** - 显式推理 + 工具执行，显式展示思考过程
 - **多轮对话** - 与 Agent 进行迭代式对话
 - **工具执行** - 执行 bash 命令、读写文件、管理笔记
 - **多 LLM 提供商** - 支持 OpenAI 和 Anthropic 兼容 API

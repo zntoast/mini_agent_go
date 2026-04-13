@@ -2,10 +2,13 @@
 
 **中文** | [English](./README.md)
 
-An interactive AI agent framework written in Go that uses Large Language Models (LLMs) to accomplish tasks through a combination of text generation and tool execution.
+An interactive AI agent framework written in Go, based on the **ReAct** (Reasoning + Acting) pattern, that accomplishes complex tasks through a combination of text generation and tool execution.
+
+The Agent automatically performs Thought → Action → Observe → Reason loops until the task is completed.
 
 ## Features
 
+- **ReAct Pattern** - Explicit reasoning + tool execution with visible thinking process
 - **Multi-turn Conversations** - Engage in iterative dialogues with the agent
 - **Tool Execution** - Execute bash commands, read/write files, and manage notes
 - **Multiple LLM Providers** - Support for OpenAI and Anthropic-compatible APIs
