@@ -21,48 +21,6 @@ Agent 会自动进行推理（Thought）→ 行动（Action）→ 观察（Obser
 
 ![Mini-Agent 运行截图](./static/image.png)
 
-## 项目结构
-
-```
-mini_agent/
-├── cmd/
-│   └── mini-agent/
-│       └── main.go              # 入口点，CLI 处理，REPL 循环
-├── pkg/
-│   ├── agent/
-│   │   └── agent.go             # 核心 Agent：决策循环、消息管理
-│   ├── config/
-│   │   └── config.go            # YAML 配置加载
-│   ├── schema/
-│   │   └── schema.go            # Message, ToolCall, LLMResponse 类型
-│   ├── llm/
-│   │   ├── base.go               # LLMClientBase 接口
-│   │   ├── llm_wrapper.go        # 提供商路由 (Anthropic/OpenAI)
-│   │   ├── openai_client.go      # OpenAI 兼容 API 客户端
-│   │   ├── anthropic_client.go    # Anthropic API 客户端
-│   │   └── retry.go              # 指数退避重试逻辑
-│   ├── tools/
-│   │   ├── base.go               # 工具接口定义
-│   │   ├── bash_tool.go          # Bash/PowerShell 执行
-│   │   ├── file_tools.go         # 文件读写编辑操作
-│   │   ├── note_tool.go          # 会话笔记记录
-│   │   └── memory_tool.go        # 持久化记忆工具
-│   ├── mcp/
-│   │   └── client.go             # MCP Client 实现
-│   ├── logger/
-│   │   └── logger.go             # 请求/响应日志
-│   ├── utils/
-│   │   └── terminal.go           # 显示宽度计算
-│   └── acp/
-│       └── server.go             # Model Context Protocol 服务端
-├── config/
-│   └── config.yaml               # 配置文件
-├── mcp/
-│   └── mcp.json                  # MCP 服务器配置
-├── go.mod                        # Go 模块定义
-└── go.sum                        # 依赖校验和
-```
-
 ## 安装
 
 ### 前置条件
@@ -98,43 +56,6 @@ $env:MINIMAX_API_KEY = "your-api-key"
 1. `./mini_agent/config/config.yaml`
 2. `~/.mini-agent/config/config.yaml`
 3. `<executable_dir>/config/config.yaml`
-
-### 配置选项
-
-```yaml
-# LLM 配置
-llm:
-  api_key: ""                              # 使用 MINIMAX_API_KEY 环境变量
-  api_base: "https://api.minimaxi.com"    # API 端点
-  model: "MiniMax-M2.5"                   # 模型名称
-  provider: "anthropic"                   # "anthropic" 或 "openai"
-
-  retry:
-    enabled: true
-    max_retries: 3
-    initial_delay: 1.0
-    max_delay: 60.0
-    exponential_base: 2.0
-
-# Agent 配置
-agent:
-  max_steps: 100                           # 最大工具调用迭代次数
-  workspace_dir: "./workspace"             # 工作目录
-  system_prompt_path: "system_prompt.md"
-
-# 工具配置
-tools:
-  enable_file_tools: true                  # 文件读写编辑
-  enable_bash: true                        # 执行命令
-  enable_note: true                        # 会话笔记
-  enable_persistent_memory: true           # 持久化记忆
-  enable_mcp: true                         # MCP 支持
-  mcp_config_path: "mini_agent/mcp"
-  mcp:
-    connect_timeout: 10.0
-    execute_timeout: 60.0
-    sse_read_timeout: 120.0
-```
 
 ### MCP 配置 (mcp.json)
 

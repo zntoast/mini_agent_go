@@ -21,48 +21,6 @@ The Agent automatically performs Thought → Action → Observe → Reason loops
 
 ![Mini-Agent Screenshot](./static/image.png)
 
-## Project Structure
-
-```
-mini_agent/
-├── cmd/
-│   └── mini-agent/
-│       └── main.go              # Entry point, CLI handling, REPL loop
-├── pkg/
-│   ├── agent/
-│   │   └── agent.go             # Core Agent: decision loop, message management
-│   ├── config/
-│   │   └── config.go            # YAML configuration loading
-│   ├── schema/
-│   │   └── schema.go            # Message, ToolCall, LLMResponse types
-│   ├── llm/
-│   │   ├── base.go               # LLMClientBase interface
-│   │   ├── llm_wrapper.go        # Provider router (Anthropic/OpenAI)
-│   │   ├── openai_client.go      # OpenAI-compatible API client
-│   │   ├── anthropic_client.go   # Anthropic API client
-│   │   └── retry.go             # Exponential backoff retry logic
-│   ├── tools/
-│   │   ├── base.go               # Tool interface definition
-│   │   ├── bash_tool.go         # Bash/PowerShell execution
-│   │   ├── file_tools.go        # File read/write/edit operations
-│   │   ├── note_tool.go         # Session notes recording
-│   │   └── memory_tool.go       # Persistent memory tools
-│   ├── mcp/
-│   │   └── client.go            # MCP Client implementation
-│   ├── logger/
-│   │   └── logger.go            # Request/response logging
-│   ├── utils/
-│   │   └── terminal.go          # Display width calculation
-│   └── acp/
-│       └── server.go            # Model Context Protocol server
-├── config/
-│   └── config.yaml              # Configuration file
-├── mcp/
-│   └── mcp.json                 # MCP servers configuration
-├── go.mod                       # Go module definition
-└── go.sum                       # Dependencies checksums
-```
-
 ## Installation
 
 ### Prerequisites
@@ -98,43 +56,6 @@ Create `config.yaml` in one of these locations (searched in order):
 1. `./mini_agent/config/config.yaml`
 2. `~/.mini-agent/config/config.yaml`
 3. `<executable_dir>/config/config.yaml`
-
-### Configuration Options
-
-```yaml
-# LLM Configuration
-llm:
-  api_key: ""                               # Use MINIMAX_API_KEY env var
-  api_base: "https://api.minimaxi.com"     # API endpoint
-  model: "MiniMax-M2.5"                    # Model name
-  provider: "anthropic"                    # "anthropic" or "openai"
-
-  retry:
-    enabled: true
-    max_retries: 3
-    initial_delay: 1.0
-    max_delay: 60.0
-    exponential_base: 2.0
-
-# Agent Configuration
-agent:
-  max_steps: 100                            # Max tool-use iterations
-  workspace_dir: "./workspace"              # Working directory
-  system_prompt_path: "system_prompt.md"
-
-# Tools Configuration
-tools:
-  enable_file_tools: true                  # File read/write/edit
-  enable_bash: true                         # Execute commands
-  enable_note: true                         # Session notes
-  enable_persistent_memory: true           # Persistent memory
-  enable_mcp: true                          # MCP support
-  mcp_config_path: "mini_agent/mcp"
-  mcp:
-    connect_timeout: 10.0
-    execute_timeout: 60.0
-    sse_read_timeout: 120.0
-```
 
 ### MCP Configuration (mcp.json)
 
