@@ -181,174 +181,66 @@ Commands:
 
 ## Execution Flow
 
-### Sequence Diagram
+This project uses the **ReAct** (Reasoning + Acting) pattern, introduced by **Princeton + Google** in 2022.
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   User      │     │   Agent     │     │    LLM      │     │   Tools     │
-└──────┬──────┘     └──────┬──────┘     └──────┬──────┘     └──────┬──────┘
-       │                   │                   │                   │
-       │  1. Input Task    │                   │                   │
-       │──────────────────>│                   │                   │
-       │                   │  2. Load Config    │                   │
-       │                   │──────┐             │                   │
-       │                   │      │             │                   │
-       │                   │<─────┘             │                   │
-       │                   │                   │                   │
-       │                   │  3. Generate (messages + tools)       │
-       │                   │───────────────────────────────────────>
-       │                   │                   │                   │
-       │                   │  4. Response (no tool_calls)            │
-       │                   │<───────────────────────────────────────│
-       │                   │                   │                   │
-       │  5. Display       │                   │                   │
-       │<──────────────────│                   │                   │
-       │                   │                   │                   │
-       │                   │ OR:                │                   │
-       │                   │                   │                   │
-       │                   │  4. Response (with tool_calls)         │
-       │                   │<───────────────────────────────────────│
-       │                   │                   │                   │
-       │                   │  5. Execute Tool   │                   │
-       │                   │───────────────────────────────────────>
-       │                   │                   │                   │
-       │                   │  6. Tool Result   │                   │
-       │                   │<───────────────────────────────────────│
-       │                   │                   │                   │
-       │                   │  7. Add to history, loop back to 3      │
-       │                   │───────────────────┘                   │
-       │                   │                   │                   │
-       │  8. Final Result  │                   │                   │
-       │<──────────────────│                   │                   │
-```
-
-### Agent Loop
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Agent Execution Loop                         │
-├─────────────────────────────────────────────────────────────────┤
-│  for step < MaxSteps:                                           │
-│                                                                 │
-│  ┌─────────────┐                                                │
-│  │ 1. Check    │  Check cancellation / max steps                │
-│  │    Precond  │                                                │
-│  └──────┬──────┘                                                │
-│         │                                                       │
-│         v                                                       │
-│  ┌─────────────┐                                                │
-│  │ 2. Summarize│  If token count > limit, compress history     │
-│  │    Messages │                                                │
-│  └──────┬──────┘                                                │
-│         │                                                       │
-│         v                                                       │
-│  ┌─────────────┐                                                │
-│  │ 3. Prepare  │  Convert tools to schema format                │
-│  │    Tools    │                                                │
-│  └──────┬──────┘                                                │
-│         │                                                       │
-│         v                                                       │
-│  ┌─────────────┐                                                │
-│  │ 4. LLM      │  Send messages + tools to LLM                │
-│  │    Generate │                                                │
-│  └──────┬──────┘                                                │
-│         │                                                       │
-│         v                                                       │
-│  ┌─────────────┐                                                │
-│  │ 5. Display  │  Show thinking & content                       │
-│  │    Output   │                                                │
-│  └──────┬──────┘                                                │
-│         │                                                       │
-│         v                                                       │
-│  ┌─────────────┐     ┌─────────────┐                            │
-│  │ 6. Tool     │────>│  Execute    │  For each tool_call:       │
-│  │    Calls?   │ Yes │  Tool       │  - Parse arguments          │
-│  └──────┬──────┘     │  Results    │  - Execute tool            │
-│         │ No         └──────┬──────┘  - Add to history         │
-│         │                   │                                   │
-│         v                   v                                   │
-│  ┌─────────────┐     ┌─────────────┐                            │
-│  │ 7. Return   │<────│ 8. Loop     │                            │
-│  │    Result   │     │    Back     │                            │
-│  └─────────────┘     └─────────────┘                            │
-└─────────────────────────────────────────────────────────────────┘
-
-## ReAct Pattern
-
-This project uses the **ReAct** (Reasoning + Acting) pattern, enabling the Agent to perform explicit reasoning and complete complex tasks through tool execution.
-
-### Core Concept
-
-ReAct was introduced by **Princeton + Google** in 2022, with the core idea being to enable LLMs to perform **explicit reasoning** during task execution, rather than directly generating tool calls.
-
-### Standard Loop
+### Core Loop
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     ReAct Loop                               │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│  ┌───────────┐                                               │
-│  │  Thought  │  Reasoning: What tool is needed for this?    │
+│  for step < MaxSteps:                                       │
+│                                                              │
+│  ┌───────────┐  1. Think - LLM decides what tool to use     │
+│  │  Thought  │                                               │
+│  └─────┬─────┘                                               │
+│        ▼                                                     │
+│  ┌───────────┐  2. Act - Execute tool call                  │
+│  │   Action  │                                               │
+│  └─────┬─────┘                                               │
+│        ▼                                                     │
+│  ┌───────────┐  3. Observe - Get tool return result         │
+│  │  Observe  │                                               │
 │  └─────┬─────┘                                               │
 │        │                                                     │
 │        ▼                                                     │
-│  ┌───────────┐                                               │
-│  │   Action  │  Execute: Call tool with parameters           │
-│  └─────┬─────┘                                               │
-│        │                                                     │
-│        ▼                                                     │
-│  ┌───────────┐                                               │
-│  │  Observe  │  Observe: Get tool return result            │
-│  └─────┬─────┘                                               │
-│        │                                                     │
-│        ▼                                                     │
-│  ┌───────────┐                                               │
-│  │  Reason   │  Reason: Decide next step based on result     │
-│  └─────┬─────┘                                               │
-│        │                                                     │
-│        └──► Continue loop or finish                          │
+│  ┌───────────┐  4. Reason - Decide next step or finish      │
+│  │  Reason   │ ───► Continue loop or return result          │
+│  └───────────┘                                               │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Implementation in This Project
+### Execution Stages
 
-| Stage  | Description           | Code Indicator           |
-|--------|----------------------|-------------------------|
-| Thought | LLM outputs thinking | `🧠 Thinking:` display  |
-| Action | Call tool            | `🔧 Tool Call:`         |
-| Observe | Get result          | `✓ Result:`            |
-| Reason | Decide next step     | Next LLM call           |
+| Stage   | Description                    | Code Indicator            |
+|---------|-------------------------------|---------------------------|
+| **Thought** | LLM analyzes task, decides tool | `🧠 Thinking:` display   |
+| **Action** | Execute tool call             | `🔧 Tool Call:`          |
+| **Observe** | Get tool return result        | `✓ Result:`             |
+| **Reason** | Decide next step or finish    | Back to step 1 or end   |
 
-### Difference from Standard ReAct
+### Flow Diagram
 
-**Standard ReAct** (single-round reasoning):
 ```
-Thought: Need to read a file
-Action: read_file(path="xxx")
-Observe: File content is...
-Reason: Based on content, next step should be...
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   User      │     │   Agent     │     │    LLM      │     │   Tools     │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                   │                   │
+       │  Input Task       │  Load Config      │                   │
+       │──────────────────>│                   │                   │
+       │                   │  Generate Response│                   │
+       │                   │───────────────────────────────────────>
+       │                   │<───────────────────────────────────────│
+       │                   │                   │                   │
+       │<──────────────────│                   │                   │
+       │                   │                   │                   │
+       │                   │  Tool Call? ───► Execute Tool         │
+       │                   │<───────────────────────────────────────│
+       │                   │                   │                   │
+       │                   │  Loop or Finish                         │
 ```
-
-**This Project** (multi-round Agent Loop):
-```
-Step 1: LLM decides to call tool
-Step 2: Execute tool, return result
-Step 3: Add result to message history
-Step 4: LLM continues to decide next step
-... Loop until task is complete
-```
-
-### Related Patterns
-
-| Pattern            | Description                                      |
-| ----------------- | ------------------------------------------------ |
-| **ReAct**         | Reasoning + Acting + Observing                   |
-| **Reflexion**     | ReAct + Self-reflection + Memory                 |
-| **CoT**           | Chain of Thought - reasoning only, no action     |
-| **ToT**           | Tree of Thought - multi-path exploration         |
-| **Plan-and-Execute** | Planning phase + Execution phase separation    |
 
 ## Available Tools
 
